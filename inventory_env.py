@@ -12,8 +12,8 @@ class InventoryEnv(gym.Env):
 
     def __init__(self):
         self.N_WHOUSES, self.N_PRODUCTS = 1, 1
-        self.action_space_low, self.action_space_high = 0, 200
-        self.INV_L, self.INV_H = 0, 10000
+        self.action_space_low, self.action_space_high = 0, 10
+        self.INV_L, self.INV_H = 0, 10
 
         self.low_state = np.zeros((self.N_WHOUSES * self.N_PRODUCTS,)) + self.INV_L
         self.high_state = np.zeros((self.N_WHOUSES * self.N_PRODUCTS,)) + self.INV_H
@@ -23,16 +23,32 @@ class InventoryEnv(gym.Env):
         self.observation_space = spaces.Box(low=self.low_state, high=self.high_state,
                                             dtype=np.float32)
         # Added by Chirag
-        self.PROFIT_FACTOR = 5.
-        self.CP = 1. # For for loops
+        self.PROFIT_FACTOR = 5.     # Reduced the PROFIT_FACTOR from 5. to 1.
+                                    # Reason: Ideally the agent must be able to 
+                                    # perfectly predict the demand LEN_MONTH days 
+                                    # from the current day. If this is true then
+                                    # backorder_cost = holding_cost = 0, and 
+                                    # order_cost = CP * action = 1 * action = action
+                                    # revenue_gen = SP * demand = (1. + PROFIT_FACTOR) * CP * demand
+                                    # but action = demand (sinc this is what the agent is supposed to do)
+                                    # Thus, revenue_gen = (1. + PROFIT_FACTOR) * CP * action
+                                    #                   = (1. + 1.) * 1. * action
+                                    #                   = 2. * action
+                                    # Thus, reward = revenue_gen - order_cost = 1 * action
+                                    # This should be sufficient to overcome the initially incurred backorder_costs
+                                    # Whereas if PROFIT_FACTOR was 5. then even if the agent successfully sells once,
+                                    # the profits will overcome backorder_costs for many more steps.
+                                    # Now the agent will not be as motivated to get rid of those backorder_costs.
+
+                                    # Changed PROFIT_FACTOR back to 5. because the agent keeps taking action 1 when PROFIT_FACTOR is 1.
+        self.CP = 1.                # For for loops
         self.CP_VECTOR = np.zeros((self.N_PRODUCTS, 1)) + self.CP # For vectorization
         self.SP_VECTOR = (1. + self.PROFIT_FACTOR) * self.CP_VECTOR
 
         self.CH = 1.
-        self.LEN_MONTH = 1
+        self.LEN_MONTH = 10
         self.DEMAND_STD_DEV = 1
         self.DEMAND_MEAN = 5
-        self.whse_mapping = {'Whse_A':0, 'Whse_C':1,'Whse_J':2,'Whse_S':3}
 
         self.counter = 0
         self.seed()
@@ -53,8 +69,8 @@ class InventoryEnv(gym.Env):
             self.available = self.observation.copy()
 
         # Create Demand Matrix for Current Day
-        self.backorder_cost = 0
-        self.revenue_gen = 0
+        self.backorder_cost = 0.
+        self.revenue_gen = 0.
 
 
         demand_matrix = np.random.normal(self.DEMAND_MEAN, self.DEMAND_STD_DEV, size = (self.N_WHOUSES, self.N_PRODUCTS))
@@ -89,20 +105,21 @@ class InventoryEnv(gym.Env):
         action = np.array(action).astype(np.int32)
         action = action.reshape(self.N_WHOUSES, self.N_PRODUCTS)
         action[action < 0] = 0
-        if self.counter == 1: 
-            print('Action: {}\tDemand: {}'.format(action[0][0], self.dm[0][0]))
-
-        self.counter += 1
         
         self.available, self.backorder_cost, self.revenue_gen = self.order_demand_deduction()
         self.action_q.append(action)
         self.observation = self.available.copy()
         self.holding_cost = self.get_holding_cost()
         self.order_cost = self.get_order_cost(action)
-        self.reward = self.backorder_cost + self.holding_cost + self.revenue_gen + self.order_cost * 0.
-        # print (self.backorder_cost, self.revenue_gen, self.holding_cost)
+        self.reward = self.backorder_cost + self.holding_cost + self.revenue_gen + self.order_cost 
         self.reward /= 100.
         # print (self.reward)
+        # if self.counter == 1: 
+        #     print('Action: {}\tDemand: {}'.format(action[0][0], self.dm[0][0]))
+        # if self.revenue_gen > 0:
+        # print (self.backorder_cost, self.revenue_gen, self.holding_cost, self.order_cost, self.reward)
+
+        self.counter += 1
         return np.array(self.observation).flatten(), np.squeeze(self.reward), False, None
 
     def reset(self):
