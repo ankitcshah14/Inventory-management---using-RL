@@ -113,6 +113,8 @@ class InventoryEnv(gym.Env):
         self.order_cost = self.get_order_cost(action)
         self.reward = self.backorder_cost + self.holding_cost + self.revenue_gen + self.order_cost 
         self.reward /= 100.
+        self.reward /= self.N_WHOUSES * self.N_PRODUCTS
+        
         # print (self.reward)
         # if self.counter == 1: 
         #     print('Action: {}\tDemand: {}'.format(action[0][0], self.dm[0][0]))
