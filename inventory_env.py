@@ -11,7 +11,7 @@ from prettytable import PrettyTable
 class InventoryEnv(gym.Env):
 
     def __init__(self):
-        self.N_WHOUSES, self.N_PRODUCTS = 1, 1
+        self.N_WHOUSES, self.N_PRODUCTS = 4, 100
         self.action_space_low, self.action_space_high = 0, 10
         self.INV_L, self.INV_H = 0, 10
 
