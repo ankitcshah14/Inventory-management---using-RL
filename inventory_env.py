@@ -47,8 +47,9 @@ class InventoryEnv(gym.Env):
 
         self.CH = 1.
         self.LEN_MONTH = 10
-        self.DEMAND_STD_DEV = 1
-        self.DEMAND_MEAN = 5
+        
+        self.DEMAND_SHAPE = 1
+        self.DEMAND_SCALE = 5
 
         self.counter = 0
         self.seed()
@@ -73,7 +74,7 @@ class InventoryEnv(gym.Env):
         self.revenue_gen = 0.
 
 
-        demand_matrix = np.random.normal(self.DEMAND_MEAN, self.DEMAND_STD_DEV, size = (self.N_WHOUSES, self.N_PRODUCTS))
+        demand_matrix = np.random.gamma(shape = self.DEMAND_SHAPE, scale = self.DEMAND_SCALE, size = (self.N_WHOUSES, self.N_PRODUCTS))
         demand_matrix = demand_matrix.astype(np.int32)
         self.dm = demand_matrix.copy()
 
